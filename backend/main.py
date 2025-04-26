@@ -1,71 +1,119 @@
+import socket
+import struct
 import time
-import os
+import argparse
 import logging
+from io import BytesIO
+import pyautogui
 from PIL import ImageGrab
 
-
 # Настройка логирования
-def setup_logging(log_file="screenshot_log.txt"):
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler(log_file, encoding='utf-8'),  # Запись в файл
-            logging.StreamHandler()  # Вывод в консоль
-        ]
-    )
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("server_log.txt", encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
 
+def main():
+    parser = argparse.ArgumentParser(description='Сервер для передачи скриншотов и обработки кликов.')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Хост сервера')
+    parser.add_argument('--port', type=int, default=8888, help='Порт сервера')
+    parser.add_argument('--interval', type=int, default=3000, help='Интервал между скриншотами (мс)')
+    parser.add_argument('--quality', type=int, default=85, help='Качество JPEG (1-100)')
+    args = parser.parse_args()
 
-def take_screenshot(interval_ms, save_folder="screenshots"):
-    """
-    Делает скриншоты всего экрана с заданным интервалом и сохраняет их в папку save_folder
+    host = args.host
+    port = args.port
+    interval_ms = args.interval
+    quality = args.quality
 
-    :param interval_ms: Интервал между скриншотами в миллисекундах.
-    :param save_folder: Папка для сохранения скриншотов (по умолчанию "screenshots").
-    """
-    if not os.path.exists(save_folder):
-        try:
-            os.makedirs(save_folder)
-            logging.info(f"Папка {save_folder} создана.")
-        except (PermissionError, OSError) as e:
-            logging.error(f"Ошибка создания папки: {e}")
-            return
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind((host, port))
+    server_socket.listen(1)
+    logging.info(f"Сервер запущен на {host}:{port}. Ожидание подключения...")
 
-    count = 0
+    conn, addr = server_socket.accept()
+    logging.info(f"Подключен клиент: {addr}")
+
+    buffer = b''
     try:
         while True:
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            filename = os.path.join(save_folder, f"screenshot_{timestamp}_{count}.png")
-
+            # Захват скриншота
             try:
                 screenshot = ImageGrab.grab()
-                screenshot.save(filename)
-                logging.info(f"Скриншот сохранён: {filename}")
-                count += 1
-            except (PermissionError, IOError) as e:
-                logging.error(f"Ошибка сохранения: {e}")
             except Exception as e:
                 logging.error(f"Ошибка захвата экрана: {e}")
+                time.sleep(interval_ms / 1000)
+                continue
+
+            # Конвертация в JPEG
+            try:
+                buffered = BytesIO()
+                screenshot.save(buffered, format="JPEG", quality=quality)
+                img_data = buffered.getvalue()
+            except Exception as e:
+                logging.error(f"Ошибка конвертации изображения: {e}")
+                time.sleep(interval_ms / 1000)
+                continue
+
+            # Отправка изображения
+            try:
+                img_size = struct.pack("!I", len(img_data))
+                conn.sendall(b"IMG:" + img_size + img_data)
+            except (BrokenPipeError, ConnectionResetError) as e:
+                logging.error(f"Ошибка отправки данных: {e}")
+                break
+            except Exception as e:
+                logging.error(f"Неизвестная ошибка при отправке: {e}")
+                break
+
+            # Прием и обработка событий
+            try:
+                conn.settimeout(0.001)
+                data = conn.recv(1024)
+                if data:
+                    buffer += data
+                    # Обработка всех полных сообщений
+                    while b'\n' in buffer:
+                        msg_part, buffer = buffer.split(b'\n', 1)
+                        msg = msg_part.decode().strip()
+                        if msg.startswith("MOUSE:"):
+                            parts = msg.split(':')
+                            if len(parts) == 4:
+                                _, click_type, x_str, y_str = parts
+                                try:
+                                    x = float(x_str)
+                                    y = float(y_str)
+                                    screen_width, screen_height = pyautogui.size()
+                                    real_x = int(x * screen_width)
+                                    real_y = int(y * screen_height)
+                                    pyautogui.moveTo(real_x, real_y)
+                                    pyautogui.click(button=click_type)
+                                    logging.info(f"Клик {click_type} на ({real_x}, {real_y})")
+                                except Exception as e:
+                                    logging.error(f"Ошибка обработки клика: {e}")
+                            else:
+                                logging.warning(f"Неверный формат сообщения: {msg}")
+            except socket.timeout:
+                pass
+            except ConnectionResetError:
+                logging.error("Соединение разорвано клиентом.")
+                break
+            except Exception as e:
+                logging.error(f"Ошибка приема данных: {e}")
+                break
 
             time.sleep(interval_ms / 1000)
 
     except KeyboardInterrupt:
-        logging.info("Скрипт остановлен пользователем.")
-    except Exception as e:
-        logging.critical(f"Неожиданная ошибка: {e}")
-
+        logging.info("Остановка сервера по запросу пользователя.")
+    finally:
+        conn.close()
+        server_socket.close()
+        logging.info("Сервер остановлен.")
 
 if __name__ == "__main__":
-    setup_logging()  # Инициализация логирования
-    logging.info("Программа запущена.")
-    time.sleep(0.1)
-
-    try:
-        interval = int(input("Введите интервал между скриншотами (мс): "))
-        if interval <= 0:
-            raise ValueError("Интервал должен быть > 0")
-    except ValueError as e:
-        logging.warning(f"Некорректный интервал: {e}. Используется 1000 мс.")
-        interval = 1000
-
-    take_screenshot(interval)
+    main()
