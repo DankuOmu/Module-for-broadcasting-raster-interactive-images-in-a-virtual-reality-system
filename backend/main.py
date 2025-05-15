@@ -154,19 +154,19 @@ def main():
                             parts = [part1, part2, part3, part4]
                             if len(parts) == 4:
                                 _, click_type, x_str, y_str = parts
-                                try:
-                                    x = float(x_str)
-                                    y = float(y_str)
+                                click_type = click_type.split('_')[0]
+                                if click_type[1] != "up": # Обработка только нажатия down
+                                    try:
+                                        x = float(x_str) / 1920
+                                        y = float(y_str) / 1080
 
-                                    # Преобразование координат в абсолютные
-                                    x = monitor.x + safe_coordinate_conversion(x, monitor.width)
-                                    y = monitor.y + safe_coordinate_conversion(y, monitor.height)
-
-                                    pyautogui.moveTo(x, y)
-                                    pyautogui.click(button=click_type)
-                                    logging.info(f"Клик {click_type} на ({x}, {y})")
-                                except Exception as e:
-                                    logging.error(f"Ошибка обработки клика: {e}")
+                                        x = monitor.x + safe_coordinate_conversion(x, monitor.width)
+                                        y = monitor.y + safe_coordinate_conversion(y, monitor.height)
+                                        pyautogui.moveTo(x, y)
+                                        pyautogui.click(button=click_type)
+                                        logging.info(f"Клик {click_type} на ({x}, {y})")
+                                    except Exception as e:
+                                        logging.error(f"Ошибка обработки клика: {e}")
                             else:
                                 logging.warning(f"Неверный формат сообщения: {msg}")
             except socket.timeout:
