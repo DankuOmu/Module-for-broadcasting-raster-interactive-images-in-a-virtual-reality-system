@@ -15,11 +15,13 @@ public:
 };
 
 UCLASS(Blueprintable)
-class UVRMouseClient : public UObject
+class UVRMouseClient : public UObject, public FTickableGameObject
 {
     GENERATED_BODY()
 
 public:
+    static float LastUpdate;
+
     UVRMouseClient();
 
     UFUNCTION(BlueprintCallable, Category = "VR Mouse Client")
@@ -39,6 +41,10 @@ public:
 
     UFUNCTION(BlueprintCallable, Category = "VR Mouse Client")
     bool IsConnected() const;
+
+    void Tick(float DeltaTime) override;
+
+    TStatId GetStatId() const override;
 
     class VRMouseClient* NativeClient;
 };

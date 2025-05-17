@@ -44,6 +44,9 @@ public:
     // Отправка события мыши
     bool SendMouseEvent(const std::string& eventType, int x, int y);
 
+    // Получение данных
+    std::string RecieveData(void);
+
     // Проверка подключения
     bool IsConnected() const;
 
@@ -63,7 +66,4 @@ private:
 
     // Внутренняя функция отправки данных
     bool SendData(const std::string& data);
-
-    // Получение данных
-    std::string RecieveData(void);
 };

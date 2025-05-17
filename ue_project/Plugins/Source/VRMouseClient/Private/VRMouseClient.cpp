@@ -10,7 +10,6 @@
 
 
 VRImageTranslator::VRImageTranslator(UObject* context) {
-    // GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green, TEXT("Image Translator"));
     UE_LOG(LogTemp, Warning, TEXT("Image Translator loaded"));
 
     FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
@@ -25,7 +24,7 @@ VRImageTranslator::VRImageTranslator(UObject* context) {
     UWorld* world = GEngine->GetWorldFromContextObject(context, EGetWorldErrorMode::ReturnNull);
 
     FVector pos(-500.f, 0.f, 100.f);
-    FRotator rot(90.f, 0.f, 180.f);
+    FRotator rot(0.f, -90.f, 90.f);
     FActorSpawnParameters SpawnInfo;
     SpawnInfo.Owner = world->GetFirstPlayerController()->GetPawn();
     SpawnInfo.Instigator = world->GetFirstPlayerController()->GetPawn()->GetInstigator();
@@ -48,43 +47,57 @@ VRImageTranslator::VRImageTranslator(UObject* context) {
 }
 
 bool VRImageTranslator::UpdateTexture(const std::string& data) {
+    if (data.size() < 4)
+        return false;
+
     UE_LOG(LogTemp, Warning, TEXT("updating texture"));
     TArray<uint8> LoadedData;
     uint32 w = 2560, h = 1600;
-    FString path = FPaths::ProjectContentDir() + FString(data.c_str());
-    FFileHelper::LoadFileToArray(LoadedData, *path);
-    /*for (size_t i = 0; i < data.size(); i++) {
+
+    for (size_t i = 0; i < data.size(); i++) {
         LoadedData.Add(data[i]);
-    }*/
+    }
 
-    // UTexture2D* tex = CreateTextureFromImageData(LoadedData, 1920, 1080);
-    UTexture2D* tex = UTexture2D::CreateTransient(w, h, PF_R8G8B8A8);
-    FTexturePlatformData* PlatformData = tex->GetPlatformData();
-    void* TexData = PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
-
-    IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper"));
-    // TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG);
+    UTexture2D* tex = nullptr;
+    IImageWrapperModule& ImageWrapperModule = FModuleManager::LoadModuleChecked<IImageWrapperModule>(FName("ImageWrapper"));
     TSharedPtr<IImageWrapper> ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::JPEG);
 
-    if (ImageWrapper->SetCompressed(LoadedData.GetData(), LoadedData.Num())) {
-        TArray<uint8> UncompressedRGBA;
-        if (ImageWrapper->GetRaw(ERGBFormat::RGBA, 8, UncompressedRGBA)) {
-            FMemory::Memcpy(TexData, UncompressedRGBA.GetData(), UncompressedRGBA.Num());
-        } else {
-            UE_LOG(LogTemp, Warning, TEXT("Failed to decompress"))
+    if (ImageWrapper.IsValid() && ImageWrapper->SetCompressed(LoadedData.GetData(), LoadedData.Num()))
+    {
+        TArray<uint8> UncompressedBGRA;
+        if (ImageWrapper->GetRaw(ERGBFormat::BGRA, 8, UncompressedBGRA))
+        {
+            tex = UTexture2D::CreateTransient(ImageWrapper->GetWidth(), ImageWrapper->GetHeight(), PF_B8G8R8A8);
+            FTexturePlatformData* PlatformData = tex->GetPlatformData();
+
+            //Valid?
+            if (!tex) return false;
+            //~~~~~~~~~~~~~~
+
+            //Out!
+            w = ImageWrapper->GetWidth();
+            h = ImageWrapper->GetHeight();
+
+            //Copy!
+            void* TextureData = PlatformData->Mips[0].BulkData.Lock(LOCK_READ_WRITE);
+            FMemory::Memcpy(TextureData, UncompressedBGRA.GetData(), UncompressedBGRA.Num());
+            PlatformData->Mips[0].BulkData.Unlock();
+
+            //Update!
+            tex->UpdateResource();
         }
+        else
+            return false;
     }
-    else {
-        UE_LOG(LogTemp, Warning, TEXT("Failed to set data in image wrapper"))
-    }
-    
-    PlatformData->Mips[0].BulkData.Unlock();
-    tex->UpdateResource();
+    else
+        return false;
 
     TArray<UStaticMeshComponent*> Components;
     object->GetComponents<UStaticMeshComponent>(Components);
     int n = Components.Num();
     UStaticMeshComponent* StaticMeshComponent = Components[1];
+    FVector scale((double)w / h, 1, 1);
+    object->SetActorScale3D(scale);
 
     UMaterialInstanceDynamic* dynamic = StaticMeshComponent->CreateDynamicMaterialInstance(0, mtl);
     dynamic->SetTextureParameterValue("Texture", tex);
@@ -211,17 +224,39 @@ bool VRMouseClient::SendData(const std::string& data) {
 
 std::string VRMouseClient::RecieveData(void) {
     std::lock_guard<std::recursive_mutex> lock(m_socketMutex);
-    char recvbuf[1000000];
-    int bytesReceived = recv(m_socket, recvbuf, sizeof(recvbuf) - 1, 0);
-
-    if (bytesReceived > 0) {
-        recvbuf[bytesReceived] = '\0';
-        // UE_LOG(LogTemp, Warning, TEXT("DATA: %s"), UTF8_TO_TCHAR(recvbuf));
-        UE_LOG(LogTemp, Warning, TEXT("%d bytes of data received"), bytesReceived);
+    char* recvbuf = nullptr;
+    char size[8];
+    int sz = 0;
+    // int bytesReceived = recv(m_socket, recvbuf, sizeof(recvbuf) - 1, 0);
+    int bytesReceived = recv(m_socket, size, 8, 0);
+    if (bytesReceived == 8) {
+        while (bytesReceived == 8 and (size[0] != 'I' || size[1] != 'M' || size[2] != 'G')) {
+            bytesReceived = recv(m_socket, size, 8, 0);
+        }
+        if (bytesReceived < 8)
+            return "";
+        for (int i = 0; i < 4; i++)
+            sz = (sz << 8) + size[i + 4];
+        recvbuf = new char[sz*2];
+        bytesReceived = recv(m_socket, recvbuf, sz*2, 0);
+        if (bytesReceived > 0) {
+            UE_LOG(LogTemp, Warning, TEXT("%d bytes of data received"), bytesReceived);
+        } else {
+            UE_LOG(LogTemp, Warning, TEXT("RECEIVED ERROR: Image data"));
+        }
     } else {
-        UE_LOG(LogTemp, Warning, TEXT("RECEIVED ERROR!"));
+        UE_LOG(LogTemp, Warning, TEXT("RECEIVED ERROR: Image size"));
     }
-    std::string res(recvbuf, recvbuf + bytesReceived);
+
+
+    //if (bytesReceived > 0) {
+    //    recvbuf[bytesReceived] = '\0';
+    //    // UE_LOG(LogTemp, Warning, TEXT("DATA: %s"), UTF8_TO_TCHAR(recvbuf));
+    //    UE_LOG(LogTemp, Warning, TEXT("%d bytes of data received"), bytesReceived);
+    //} else {
+    //    UE_LOG(LogTemp, Warning, TEXT("RECEIVED ERROR!"));
+    //}
+    std::string res(recvbuf, recvbuf + max(bytesReceived, 0));
     return res;
 }
 

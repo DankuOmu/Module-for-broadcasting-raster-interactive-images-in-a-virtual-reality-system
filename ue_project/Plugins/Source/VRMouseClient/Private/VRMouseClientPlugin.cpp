@@ -4,6 +4,8 @@
 
 IMPLEMENT_MODULE(FVRMouseClientPluginModule, VRMouseClientPlugin)
 
+float UVRMouseClient::LastUpdate = 0;
+
 void FVRMouseClientPluginModule::StartupModule()
 {
     // Инициализация модуля
@@ -47,4 +49,21 @@ bool UVRMouseClient::IsConnected() const
 bool UVRMouseClient::SendMouseButtonEvent(const FString& ButtonEvent, int32 X, int32 Y)
 {
     return NativeClient->SendMouseEvent(TCHAR_TO_UTF8(*ButtonEvent), X, Y);
+}
+
+void UVRMouseClient::Tick(float DeltaTime)
+{
+    return;
+    if (NativeClient->Translator and UVRMouseClient::LastUpdate >= 1.0f) {
+        NativeClient->Translator->UpdateTexture(NativeClient->RecieveData());
+        UVRMouseClient::LastUpdate = 0;
+        return;
+    }
+    UVRMouseClient::LastUpdate += DeltaTime;
+    return;
+}
+
+TStatId UVRMouseClient::GetStatId() const
+{
+    return TStatId();
 }
