@@ -129,6 +129,8 @@ def main():
 
             # Проверка на изменения на экране
             if images_are_different(screenshot, prev_screenshot):
+                prev_screenshot = screenshot
+
                 # Конвертация в JPEG
                 try:
                     buffered = BytesIO()
@@ -149,8 +151,6 @@ def main():
                 except Exception as e:
                     logging.error(f"Неизвестная ошибка при отправке: {e}")
                     break
-
-            prev_screenshot = screenshot
 
             # Прием и обработка событий
             try:
