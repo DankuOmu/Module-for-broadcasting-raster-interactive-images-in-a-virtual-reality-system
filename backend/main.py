@@ -79,6 +79,16 @@ def select_monitor_interactively():
         except ValueError:
             print("Ошибка: введите целое число")
 
+# Сравнивает два изображения, возвращает True если есть различия
+def images_are_different(img1, img2):
+    if img1 is None or img2 is None:
+        return True
+
+    if img1.tobytes() == img2.tobytes():
+        return False
+    else:
+        return True
+
 def main():
     logging.info(f"Программа запущена.")
 
@@ -105,6 +115,7 @@ def main():
     conn, addr = server_socket.accept()
     logging.info(f"Подключен клиент: {addr}")
 
+    prev_screenshot = None
     buffer = b''
     try:
         while True:
@@ -116,26 +127,30 @@ def main():
                 time.sleep(interval_ms / 1000)
                 continue
 
-            # Конвертация в JPEG
-            try:
-                buffered = BytesIO()
-                screenshot.save(buffered, format="JPEG", quality=quality)
-                img_data = buffered.getvalue()
-            except Exception as e:
-                logging.error(f"Ошибка конвертации изображения: {e}")
-                time.sleep(interval_ms / 1000)
-                continue
+            # Проверка на изменения на экране
+            if images_are_different(screenshot, prev_screenshot):
+                prev_screenshot = screenshot
 
-            # Отправка изображения
-            try:
-                img_size = struct.pack("!I", len(img_data))
-                conn.sendall(b"IMG:" + img_size + img_data)
-            except (BrokenPipeError, ConnectionResetError) as e:
-                logging.error(f"Ошибка отправки данных: {e}")
-                break
-            except Exception as e:
-                logging.error(f"Неизвестная ошибка при отправке: {e}")
-                break
+                # Конвертация в JPEG
+                try:
+                    buffered = BytesIO()
+                    screenshot.save(buffered, format="JPEG", quality=quality)
+                    img_data = buffered.getvalue()
+                except Exception as e:
+                    logging.error(f"Ошибка конвертации изображения: {e}")
+                    time.sleep(interval_ms / 1000)
+                    continue
+
+                # Отправка изображения
+                try:
+                    img_size = struct.pack("!I", len(img_data))
+                    conn.sendall(b"IMG:" + img_size + img_data)
+                except (BrokenPipeError, ConnectionResetError) as e:
+                    logging.error(f"Ошибка отправки данных: {e}")
+                    break
+                except Exception as e:
+                    logging.error(f"Неизвестная ошибка при отправке: {e}")
+                    break
 
             # Прием и обработка событий
             try:
@@ -157,8 +172,8 @@ def main():
                                 click_type = click_type.split('_')[0]
                                 if click_type[1] != "up": # Обработка только нажатия down
                                     try:
-                                        x = float(x_str) / 1920
-                                        y = float(y_str) / 1080
+                                        x = float(x_str)
+                                        y = float(y_str)
 
                                         x = monitor.x + safe_coordinate_conversion(x, monitor.width)
                                         y = monitor.y + safe_coordinate_conversion(y, monitor.height)
