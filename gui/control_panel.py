@@ -191,6 +191,13 @@ class VRControlApp:
         pixel = round(rel_value * max_value)
         return min(max(pixel, 0), max_value - 1)
 
+    @staticmethod
+    def images_are_different(img1, img2):
+        """Сравнение изображений для кэширования"""
+        if img1 is None or img2 is None:
+            return True
+        return img1.tobytes() != img2.tobytes()
+
     def run_server(self, interval_ms):
         """Основная логика сервера с поддержкой выбора монитора"""
         try:
@@ -207,6 +214,7 @@ class VRControlApp:
             self.current_conn, addr = self.server_socket.accept()
             logging.info(f"Подключен клиент: {addr}")
 
+            prev_screenshot = None
             buffer = b''
             while self.is_streaming:
                 start_time = time.time()
@@ -217,6 +225,10 @@ class VRControlApp:
                 except Exception as e:
                     logging.error(f"Ошибка захвата экрана: {e}")
                     continue
+
+                # Проверка на изменения
+                if self.images_are_different(screenshot, prev_screenshot):
+                    prev_screenshot = screenshot
 
                 # Конвертация в JPEG
                 try:
@@ -247,7 +259,7 @@ class VRControlApp:
                 except socket.timeout:
                     pass
 
-                # Точное интервал
+                # Точный интервал
                 elapsed = time.time() - start_time
                 sleep_time = max(0, interval_ms / 1000 - elapsed)
                 time.sleep(sleep_time)
