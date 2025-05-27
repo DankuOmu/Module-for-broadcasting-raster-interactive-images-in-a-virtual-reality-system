@@ -7,6 +7,7 @@
 #include "MouseForwardingWidget.generated.h"
 
 
+
 UCLASS()
 class VRMOUSECLIENT_API UMouseForwardingWidget : public UUserWidget
 {

@@ -1,6 +1,7 @@
 // VRMouseClient.h
 #pragma once
 
+
 #include "LevelEditor.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/Blueprint.h"
@@ -37,21 +38,25 @@ public:
 
     VRMouseClient();
     VRMouseClient(UObject* context);
+
     ~VRMouseClient();
 
-    // Подключение к серверу трансляции
+    // ГЏГ®Г¤ГЄГ«ГѕГ·ГҐГ­ГЁГҐ ГЄ Г±ГҐГ°ГўГҐГ°Гі ГІГ°Г Г­Г±Г«ГїГ¶ГЁГЁ
     bool Connect(const std::string& host, int port);
 
-    // Отправка события мыши
+    // ГЋГІГЇГ°Г ГўГЄГ  Г±Г®ГЎГ»ГІГЁГї Г¬Г»ГёГЁ
     bool SendMouseEvent(const std::string& eventType, int x, int y);
 
-    // Получение данных
+
+    // ГЏГ®Г«ГіГ·ГҐГ­ГЁГҐ Г¤Г Г­Г­Г»Гµ
     std::string RecieveData(void);
 
-    // Проверка подключения
+    bool SendWorldClickEvent(const std::string& eventType, float x, float y, float z);
+
+    // ГЏГ°Г®ГўГҐГ°ГЄГ  ГЇГ®Г¤ГЄГ«ГѕГ·ГҐГ­ГЁГї
     bool IsConnected() const;
 
-    // Закрытие соединения
+    // Г‡Г ГЄГ°Г»ГІГЁГҐ Г±Г®ГҐГ¤ГЁГ­ГҐГ­ГЁГї
     void Disconnect();
 
 private:
@@ -59,12 +64,14 @@ private:
     mutable std::recursive_mutex m_socketMutex;
     bool m_connected;
 
-    // Инициализация Winsock
+    // Г€Г­ГЁГ¶ГЁГ Г«ГЁГ§Г Г¶ГЁГї Winsock
     static void InitWinsock();
 
-    // Очистка Winsock
+    // ГЋГ·ГЁГ±ГІГЄГ  Winsock
     static void CleanupWinsock();
 
-    // Внутренняя функция отправки данных
+    // Г‚Г­ГіГІГ°ГҐГ­Г­ГїГї ГґГіГ­ГЄГ¶ГЁГї Г®ГІГЇГ°Г ГўГЄГЁ Г¤Г Г­Г­Г»Гµ
     bool SendData(const std::string& data);
+
 };
+

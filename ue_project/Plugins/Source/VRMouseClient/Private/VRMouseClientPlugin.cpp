@@ -1,25 +1,29 @@
 // VRMouseClientPlugin.cpp
 #include "VRMouseClientPlugin.h"
 #include "VRMouseClient.h"
+
 #include <thread>
 
 IMPLEMENT_MODULE(FVRMouseClientPluginModule, VRMouseClientPlugin)
 
 float UVRMouseClient::LastUpdate = 0;
 
+
 void FVRMouseClientPluginModule::StartupModule()
 {
-    // Èíèöèàëèçàöèÿ ìîäóëÿ
+    // ÃˆÃ­Ã¨Ã¶Ã¨Ã Ã«Ã¨Ã§Ã Ã¶Ã¨Ã¿ Ã¬Ã®Ã¤Ã³Ã«Ã¿
 }
 
 void FVRMouseClientPluginModule::ShutdownModule()
 {
-    // Î÷èñòêà ìîäóëÿ
+    // ÃŽÃ·Ã¨Ã±Ã²ÃªÃ  Ã¬Ã®Ã¤Ã³Ã«Ã¿
 }
 
 UVRMouseClient::UVRMouseClient()
 {
+
     NativeClient = new VRMouseClient(this);
+
 }
 
 bool UVRMouseClient::Connect(const FString& Host, int32 Port)
@@ -52,6 +56,7 @@ bool UVRMouseClient::SendMouseButtonEvent(const FString& ButtonEvent, int32 X, i
     return NativeClient->SendMouseEvent(TCHAR_TO_UTF8(*ButtonEvent), X, Y);
 }
 
+
 void update(VRMouseClient* NativeClient, float DeltaTime) {
     return;
 }
@@ -70,3 +75,4 @@ TStatId UVRMouseClient::GetStatId() const
 {
     return TStatId();
 }
+

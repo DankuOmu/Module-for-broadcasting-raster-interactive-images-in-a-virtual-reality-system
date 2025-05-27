@@ -8,6 +8,7 @@ public class VRMouseClient : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[] {
             "Core", "CoreUObject", "Engine", "InputCore", "UMG", "Slate", "SlateCore", "ImageWrapper"
+
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] { });

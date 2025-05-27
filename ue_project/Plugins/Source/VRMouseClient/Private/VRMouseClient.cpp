@@ -117,6 +117,7 @@ VRMouseClient::VRMouseClient(UObject* context)
     InitWinsock();
     Translator = nullptr;
     root = context;
+
 }
 
 VRMouseClient::~VRMouseClient() {
@@ -194,6 +195,7 @@ bool VRMouseClient::Connect(const std::string& host, int port) {
 
 bool VRMouseClient::SendMouseEvent(const std::string& eventType, int x, int y) {
     UE_LOG(LogTemp, Warning, TEXT("Mouse event"));
+
     if (!m_connected) {
         std::cerr << "Not connected to server" << std::endl;
         return false;
@@ -218,13 +220,14 @@ bool VRMouseClient::SendData(const std::string& data) {
     }
 
     int res = send(m_socket, data.c_str(), (int)data.length(), 0);
-
+  
     if (res == SOCKET_ERROR) {
         std::cerr << "send failed: " << WSAGetLastError() << std::endl;
         Disconnect();
         return false;
     }
 
+  
     if (!Translator)
         Translator = new VRImageTranslator(root);
     
@@ -281,6 +284,7 @@ bool VRMouseClient::IsConnected() const {
 
 void VRMouseClient::Disconnect() {
     UE_LOG(LogTemp, Warning, TEXT("DISCONNECT"));
+
     std::lock_guard<std::recursive_mutex> lock(m_socketMutex);
 
 
@@ -294,4 +298,20 @@ void VRMouseClient::Disconnect() {
     if (WSAGetLastError() != 0) {
         std::cout << "Disconnected from server" << std::endl;
     }
+
 }
+
+
+bool VRMouseClient::SendWorldClickEvent(const std::string& eventType, float x, float y, float z) {
+    if (!m_connected) {
+        std::cerr << "Not connected to server" << std::endl;
+        return false;
+    }
+
+    std::ostringstream oss;
+    oss << "WORLD:" << eventType << "," << x << "," << y << "," << z << "\n";
+    std::string message = oss.str();
+
+    return SendData(message);
+}
+
