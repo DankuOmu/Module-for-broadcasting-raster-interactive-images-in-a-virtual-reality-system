@@ -9,6 +9,7 @@ void UMouseForwardingWidget::NativeConstruct()
     if (VRMouseClientRef)
     {
         VRMouseClientRef->Connect(TEXT("127.0.0.1"), 12345); // Порт и адрес сервера
+        // VRMouseClientRef->Connect(TEXT("172.20.10.2"), 12345); // Порт и адрес сервера
     }
 }
 

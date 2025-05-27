@@ -1,6 +1,7 @@
 // VRMouseClientPlugin.cpp
 #include "VRMouseClientPlugin.h"
 #include "VRMouseClient.h"
+#include <thread>
 
 IMPLEMENT_MODULE(FVRMouseClientPluginModule, VRMouseClientPlugin)
 
@@ -51,16 +52,18 @@ bool UVRMouseClient::SendMouseButtonEvent(const FString& ButtonEvent, int32 X, i
     return NativeClient->SendMouseEvent(TCHAR_TO_UTF8(*ButtonEvent), X, Y);
 }
 
+void update(VRMouseClient* NativeClient, float DeltaTime) {
+    return;
+}
+
 void UVRMouseClient::Tick(float DeltaTime)
 {
-    return;
-    if (NativeClient->Translator and UVRMouseClient::LastUpdate >= 1.0f) {
+    if (NativeClient->Translator and UVRMouseClient::LastUpdate >= 0.01f) {
         NativeClient->Translator->UpdateTexture(NativeClient->RecieveData());
         UVRMouseClient::LastUpdate = 0;
         return;
     }
     UVRMouseClient::LastUpdate += DeltaTime;
-    return;
 }
 
 TStatId UVRMouseClient::GetStatId() const

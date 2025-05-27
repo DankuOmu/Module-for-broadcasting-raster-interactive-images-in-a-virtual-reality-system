@@ -11,6 +11,7 @@
 #include <system_error>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 #undef UpdateResource
 

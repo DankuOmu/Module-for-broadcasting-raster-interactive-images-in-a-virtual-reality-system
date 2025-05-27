@@ -5,8 +5,8 @@
 #include <iostream>
 #include <sstream>
 #include <mutex>
-
-
+#include <chrono>
+#include <thread>
 
 
 VRImageTranslator::VRImageTranslator(UObject* context) {
@@ -44,6 +44,7 @@ VRImageTranslator::VRImageTranslator(UObject* context) {
     obj->AddOwnedComponent(MeshComponent);
     obj->SetRootComponent(MeshComponent);
     object = obj;
+
 }
 
 bool VRImageTranslator::UpdateTexture(const std::string& data) {
@@ -164,11 +165,21 @@ bool VRMouseClient::Connect(const std::string& host, int port) {
         return false;
     }
 
+    u_long mode = 1;
+    int nbres = ioctlsocket(m_socket, FIONBIO, &mode);
+
     res = connect(m_socket, result->ai_addr, (int)result->ai_addrlen);
+    // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    while (WSAGetLastError() == 10035)
+         res = connect(m_socket, result->ai_addr, (int)result->ai_addrlen);
+
     freeaddrinfo(result);
 
-    if (res == SOCKET_ERROR) {
-        std::cerr << "connect failed: " << WSAGetLastError() << std::endl;
+    int err = WSAGetLastError();
+
+    if (res == SOCKET_ERROR and err != 10056) {
+        // std::cerr << "connect failed: " << WSAGetLastError() << std::endl;
+        UE_LOG(LogTemp, Warning, TEXT("connection failed: %d"), err);
         closesocket(m_socket);
         m_socket = INVALID_SOCKET;
         return false;
@@ -217,13 +228,13 @@ bool VRMouseClient::SendData(const std::string& data) {
     if (!Translator)
         Translator = new VRImageTranslator(root);
     
-    Translator->UpdateTexture(RecieveData());
+    // Translator->UpdateTexture(RecieveData());
 
     return true;
 }
 
 std::string VRMouseClient::RecieveData(void) {
-    std::lock_guard<std::recursive_mutex> lock(m_socketMutex);
+    // std::lock_guard<std::recursive_mutex> lock(m_socketMutex);
     char* recvbuf = nullptr;
     char size[8];
     int sz = 0;
@@ -237,6 +248,8 @@ std::string VRMouseClient::RecieveData(void) {
             return "";
         for (int i = 0; i < 4; i++)
             sz = (sz << 8) + size[i + 4];
+        if (sz < 0)
+            return "";
         recvbuf = new char[sz*2];
         bytesReceived = recv(m_socket, recvbuf, sz*2, 0);
         if (bytesReceived > 0) {
@@ -247,6 +260,8 @@ std::string VRMouseClient::RecieveData(void) {
     } else {
         UE_LOG(LogTemp, Warning, TEXT("RECEIVED ERROR: Image size"));
     }
+
+    
 
 
     //if (bytesReceived > 0) {
