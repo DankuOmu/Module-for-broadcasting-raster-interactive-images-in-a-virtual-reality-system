@@ -1,0 +1,15 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "VR Mouse Client",
+  "Description": "Sends mouse click events to TCP server.",
+  "Category": "Input",
+  "Modules": [
+    {
+      "Name": "VRMouseClient",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ]
+}

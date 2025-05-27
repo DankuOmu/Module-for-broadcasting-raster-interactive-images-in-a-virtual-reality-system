@@ -2,21 +2,28 @@
 #include "VRMouseClientPlugin.h"
 #include "VRMouseClient.h"
 
+#include <thread>
+
 IMPLEMENT_MODULE(FVRMouseClientPluginModule, VRMouseClientPlugin)
+
+float UVRMouseClient::LastUpdate = 0;
+
 
 void FVRMouseClientPluginModule::StartupModule()
 {
-    // Èíèöèàëèçàöèÿ ìîäóëÿ
+    // ÃˆÃ­Ã¨Ã¶Ã¨Ã Ã«Ã¨Ã§Ã Ã¶Ã¨Ã¿ Ã¬Ã®Ã¤Ã³Ã«Ã¿
 }
 
 void FVRMouseClientPluginModule::ShutdownModule()
 {
-    // Î÷èñòêà ìîäóëÿ
+    // ÃŽÃ·Ã¨Ã±Ã²ÃªÃ  Ã¬Ã®Ã¤Ã³Ã«Ã¿
 }
 
 UVRMouseClient::UVRMouseClient()
 {
-    NativeClient = new VRMouseClient();
+
+    NativeClient = new VRMouseClient(this);
+
 }
 
 bool UVRMouseClient::Connect(const FString& Host, int32 Port)
@@ -49,8 +56,23 @@ bool UVRMouseClient::SendMouseButtonEvent(const FString& ButtonEvent, int32 X, i
     return NativeClient->SendMouseEvent(TCHAR_TO_UTF8(*ButtonEvent), X, Y);
 }
 
-bool UVRMouseClient::SendWorldClickEvent(const FString& EventType, float X, float Y, float Z)
-{
-    if (!NativeClient) return false;
-    return NativeClient->SendWorldClickEvent(TCHAR_TO_UTF8(*EventType), X, Y, Z);
+
+void update(VRMouseClient* NativeClient, float DeltaTime) {
+    return;
 }
+
+void UVRMouseClient::Tick(float DeltaTime)
+{
+    if (NativeClient->Translator and UVRMouseClient::LastUpdate >= 0.01f) {
+        NativeClient->Translator->UpdateTexture(NativeClient->RecieveData());
+        UVRMouseClient::LastUpdate = 0;
+        return;
+    }
+    UVRMouseClient::LastUpdate += DeltaTime;
+}
+
+TStatId UVRMouseClient::GetStatId() const
+{
+    return TStatId();
+}
+

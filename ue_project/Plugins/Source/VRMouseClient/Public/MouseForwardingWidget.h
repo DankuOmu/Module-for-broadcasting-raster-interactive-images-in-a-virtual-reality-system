@@ -2,8 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "VRMouseClient.h"
 #include "VRMouseClientPlugin.h"
 #include "MouseForwardingWidget.generated.h"
+
+
 
 UCLASS()
 class VRMOUSECLIENT_API UMouseForwardingWidget : public UUserWidget
