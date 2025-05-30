@@ -1,0 +1,14 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\MouseClient",
+    "\\MouseClient\\Maps",
+    "\\Plugins",
+    "\\Plugins\\Source",
+    "\\Plugins\\Source\\ImageTranslationPlugin",
+    "\\Plugins\\Source\\ImageTranslationPlugin\\Private",
+    "\\Plugins\\Source\\ImageTranslationPlugin\\Public"
+  ],
+  "SelectedNode": "\\MouseClient\\readme.txt",
+  "PreviewInSolutionExplorer": false
+}

@@ -1,0 +1,16 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.VRMouseClient.cpp.obj": [
+			"MouseForwardingWidget.gen.cpp.obj",
+			"VRMouseClient.init.gen.cpp.obj",
+			"VRMouseClientPlugin.gen.cpp.obj",
+			"VRMouseGameMode.gen.cpp.obj",
+			"PerModuleInline.gen.cpp.obj",
+			"MouseForwardingWidget.cpp.obj",
+			"VRMouseClient.cpp.obj",
+			"VRMouseClientPlugin.cpp.obj",
+			"VRMouseGameMode.cpp.obj"
+		]
+	}
+}
