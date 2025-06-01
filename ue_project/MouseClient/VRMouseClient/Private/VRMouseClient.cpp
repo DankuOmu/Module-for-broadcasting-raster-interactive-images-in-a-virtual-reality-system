@@ -2,8 +2,19 @@
 #include "VRMouseClient.h"
 #include <iostream>
 #include <sstream>
+#include <chrono>
 #include <mutex>
 
+bool VRMouseClient::SendImage(const std::string& imageData) {
+    if (!m_connected) return false;
+
+    uint64_t timestamp = GetCurrentTimestampMs();
+
+    std::ostringstream oss;
+    oss << "IMAGE:" << timestamp << "," << imageData << "\n";
+
+    return SendData(oss.str());
+}
 
 VRMouseClient::VRMouseClient()
     : m_socket(INVALID_SOCKET), m_connected(false) {
@@ -29,7 +40,6 @@ void VRMouseClient::CleanupWinsock() {
 
 bool VRMouseClient::Connect(const std::string& host, int port) {
     std::lock_guard<std::recursive_mutex> lock(m_socketMutex);
-
 
     if (m_connected) {
         Disconnect();
@@ -71,14 +81,24 @@ bool VRMouseClient::Connect(const std::string& host, int port) {
     return true;
 }
 
+// Получение текущего времени в миллисекундах с эпохи
+static uint64_t GetCurrentTimestampMs() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+}
+
+// Отправка события мыши с координатами и таймстампом
 bool VRMouseClient::SendMouseEvent(const std::string& eventType, int x, int y) {
     if (!m_connected) {
         std::cerr << "Not connected to server" << std::endl;
         return false;
     }
 
+    uint64_t timestamp = GetCurrentTimestampMs();
+
     std::ostringstream oss;
-    oss << "MOUSE:" << eventType << "," << x << "," << y << "\n";
+    oss << "MOUSE:" << eventType << "," << x << "," << y << "," << timestamp << "\n";
     std::string message = oss.str();
 
     return SendData(message);
@@ -86,7 +106,6 @@ bool VRMouseClient::SendMouseEvent(const std::string& eventType, int x, int y) {
 
 bool VRMouseClient::SendData(const std::string& data) {
     std::lock_guard<std::recursive_mutex> lock(m_socketMutex);
-
 
     if (!m_connected) {
         return false;
@@ -109,7 +128,6 @@ bool VRMouseClient::IsConnected() const {
 void VRMouseClient::Disconnect() {
     std::lock_guard<std::recursive_mutex> lock(m_socketMutex);
 
-
     if (m_socket != INVALID_SOCKET) {
         closesocket(m_socket);
         m_socket = INVALID_SOCKET;
@@ -117,7 +135,5 @@ void VRMouseClient::Disconnect() {
 
     m_connected = false;
 
-    if (WSAGetLastError() != 0) {
-        std::cout << "Disconnected from server" << std::endl;
-    }
+    std::cout << "Disconnected from server" << std::endl;
 }
