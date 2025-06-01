@@ -15,6 +15,9 @@ public:
     VRMouseClient();
     ~VRMouseClient();
 
+    // Отправка изображения с таймстампом
+    bool SendImage(const std::string& imageData);
+
     // Подключение к серверу трансляции
     bool Connect(const std::string& host, int port);
 

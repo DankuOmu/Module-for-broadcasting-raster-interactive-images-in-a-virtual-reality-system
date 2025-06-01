@@ -2,6 +2,7 @@
 #include "Components/TextBlock.h"
 
 
+
 void UMouseForwardingWidget::NativeConstruct()
 {
     Super::NativeConstruct();
@@ -19,10 +20,17 @@ FReply UMouseForwardingWidget::NativeOnMouseButtonDown(const FGeometry& InGeomet
     {
         FVector2D Pos = InMouseEvent.GetScreenSpacePosition();
         FString Type = InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton ? "left_down" : "right_down";
+
+        FDateTime Now = FDateTime::UtcNow();
+        int64 TimestampMs = Now.ToUnixTimestamp() * 1000 + Now.GetMillisecond();
+        UE_LOG(LogTemp, Log, TEXT("Mouse down [%s] at (%f, %f) — %lld ms"), *Type, Pos.X, Pos.Y, TimestampMs);
+
         VRMouseClientRef->SendMouseButtonEvent(Type, Pos.X, Pos.Y);
     }
+
     return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
+
 
 FReply UMouseForwardingWidget::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
