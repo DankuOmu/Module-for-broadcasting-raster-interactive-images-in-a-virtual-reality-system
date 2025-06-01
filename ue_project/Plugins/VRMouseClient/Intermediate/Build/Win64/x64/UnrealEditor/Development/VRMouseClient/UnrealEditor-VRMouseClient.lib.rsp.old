@@ -1,0 +1,16 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-VRMouseClient.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"D:\Project\VRMouseClientProject\Intermediate\Build\Win64\x64\VRMouseClientProjectEditor\Development\UnrealEd\SharedPCH.UnrealEd.Project.ValApi.Cpp20.h.obj"
+"D:\Project\VRMouseClientProject\Plugins\VRMouseClient\Intermediate\Build\Win64\x64\UnrealEditor\Development\VRMouseClient\Module.VRMouseClient.cpp.obj"
+"D:\Project\VRMouseClientProject\Plugins\VRMouseClient\Intermediate\Build\Win64\x64\UnrealEditor\Development\VRMouseClient\MouseForwardingWidget.cpp.obj"
+"D:\Project\VRMouseClientProject\Plugins\VRMouseClient\Intermediate\Build\Win64\x64\UnrealEditor\Development\VRMouseClient\VRMouseClient.cpp.obj"
+"D:\Project\VRMouseClientProject\Plugins\VRMouseClient\Intermediate\Build\Win64\x64\UnrealEditor\Development\VRMouseClient\VRMouseClientPlugin.cpp.obj"
+"D:\Project\VRMouseClientProject\Plugins\VRMouseClient\Intermediate\Build\Win64\x64\UnrealEditor\Development\VRMouseClient\VRMouseGameMode.cpp.obj"
+"D:\Project\VRMouseClientProject\Plugins\VRMouseClient\Intermediate\Build\Win64\x64\UnrealEditor\Development\VRMouseClient\Default.rc2.res"
+/OUT:"D:\Project\VRMouseClientProject\Plugins\VRMouseClient\Intermediate\Build\Win64\x64\UnrealEditor\Development\VRMouseClient\UnrealEditor-VRMouseClient.lib"

@@ -22,7 +22,7 @@ logging.basicConfig(
 
 # Фиксированные параметры сервера
 SERVER_QUALITY = 85
-SERVER_HOST = '127.0.0.1'
+SERVER_HOST = '192.168.1.106'
 SERVER_PORT = 12345
 
 
