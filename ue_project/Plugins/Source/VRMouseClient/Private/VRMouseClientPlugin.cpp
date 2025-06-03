@@ -21,9 +21,7 @@ void FVRMouseClientPluginModule::ShutdownModule()
 
 UVRMouseClient::UVRMouseClient()
 {
-
     NativeClient = new VRMouseClient(this);
-
 }
 
 bool UVRMouseClient::Connect(const FString& Host, int32 Port)
@@ -74,5 +72,11 @@ void UVRMouseClient::Tick(float DeltaTime)
 TStatId UVRMouseClient::GetStatId() const
 {
     return TStatId();
+}
+
+bool UVRMouseClient::SendWorldClickEvent(const FString& EventType, float X, float Y, float Z)
+{
+    if (!NativeClient) return false;
+    return NativeClient->SendWorldClickEvent(TCHAR_TO_UTF8(*EventType), X, Y, Z);
 }
 

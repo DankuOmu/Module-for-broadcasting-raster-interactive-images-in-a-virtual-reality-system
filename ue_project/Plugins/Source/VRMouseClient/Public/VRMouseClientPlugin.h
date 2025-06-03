@@ -21,7 +21,6 @@ class UVRMouseClient : public UObject, public FTickableGameObject
     GENERATED_BODY()
 
 public:
-
     static float LastUpdate;
 
     UVRMouseClient();
@@ -44,13 +43,11 @@ public:
     UFUNCTION(BlueprintCallable, Category = "VR Mouse Client")
     bool IsConnected() const;
 
-
     void Tick(float DeltaTime) override;
 
     TStatId GetStatId() const override;
 
     class VRMouseClient* NativeClient;
-};
 
     UFUNCTION(BlueprintCallable, Category = "VR Mouse Client")
     bool SendWorldClickEvent(const FString& EventType, float X, float Y, float Z);

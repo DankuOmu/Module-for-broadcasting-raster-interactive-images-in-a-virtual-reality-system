@@ -8,6 +8,7 @@ import logging
 from io import BytesIO
 import pyautogui
 from PIL import ImageGrab
+from screeninfo import get_monitors
 
 # Настройка логирования сервера
 logging.basicConfig(
@@ -20,30 +21,28 @@ logging.basicConfig(
 )
 
 # Фиксированные параметры сервера
-SERVER_QUALITY = 85  # Качество JPEG (1-100)
+SERVER_QUALITY = 85
 SERVER_HOST = '127.0.0.1'
 SERVER_PORT = 12345
 
 
 class VRControlApp:
     monitor_var: tk.StringVar
-    interval_var: tk.IntVar
+    frequency_var: tk.DoubleVar
+    quality_var: tk.IntVar
     monitor_cb: ttk.Combobox
     freq_spin: ttk.Spinbox
+    quality_spin: ttk.Spinbox
     start_btn: ttk.Button
     stop_btn: ttk.Button
     status_label: ttk.Label
-
-    server_thread: threading.Thread | None
-    server_socket: socket.socket | None
-    current_conn: socket.socket | None
-    is_streaming: bool
 
     def __init__(self, master):
         self.master = master
         master.title("Control Panel")
 
-        self.monitor_var = tk.StringVar(value="Монитор 1")
+        self.monitors = self.get_monitors()
+        self.selected_monitor = tk.StringVar()
         self.interval_var = tk.IntVar(value=3000)
 
         self.create_widgets()
@@ -53,16 +52,32 @@ class VRControlApp:
         self.server_thread = None
         self.server_socket = None
 
+    @staticmethod
+    def get_monitors():
+        """Получение списка мониторов с их параметрами"""
+        monitors = []
+        for i, m in enumerate(get_monitors(), 1):
+            primary = " (основной)" if m.is_primary else ""
+            monitors.append({
+                "index": i,
+                "name": f"Монитор {i}: {m.width}x{m.height}{primary}",
+                "bbox": (m.x, m.y, m.x + m.width, m.y + m.height)
+            })
+        return monitors
+
     def create_widgets(self):
-        # Фрейм выбора монитора (заглушка)
+        # Фрейм выбора монитора
         monitor_frame = ttk.LabelFrame(self.master, text="Выбор рабочего стола")
-        ttk.Label(monitor_frame, text="Номер монитора:").grid(row=0, column=0, padx=5, pady=5)
+        ttk.Label(monitor_frame, text="Монитор:").grid(row=0, column=0, padx=5, pady=5)
+
+        monitor_names = [m["name"] for m in self.monitors]
         self.monitor_cb = ttk.Combobox(
             monitor_frame,
-            textvariable=self.monitor_var,
-            values=["Монитор 1", "Монитор 2", "Монитор 3"],
+            textvariable=self.selected_monitor,
+            values=monitor_names,
             state="readonly"
         )
+        self.monitor_cb.current(0)
         self.monitor_cb.grid(row=0, column=1, padx=5, pady=5)
         monitor_frame.pack(fill="x", padx=10, pady=5)
 
@@ -119,8 +134,8 @@ class VRControlApp:
         if not self.is_streaming:
             try:
                 interval = self.interval_var.get()
-                if interval < 3 or interval > 86400000:
-                    raise ValueError("Интервал должен быть 3-86400000 мс")
+                if interval < 10 or interval > 86400000:
+                    raise ValueError("Интервал должен быть 10-86400000 мс")
 
                 self.is_streaming = True
                 self.server_thread = threading.Thread(
@@ -170,9 +185,27 @@ class VRControlApp:
         self.start_btn.configure(state=tk.DISABLED if started else tk.NORMAL)
         self.stop_btn.configure(state=tk.NORMAL if started else tk.DISABLED)
 
+    @staticmethod
+    def safe_coordinate_conversion(rel_value, max_value):
+        """Безопасное преобразование относительных координат"""
+        pixel = round(rel_value * max_value)
+        return min(max(pixel, 0), max_value - 1)
+
+    @staticmethod
+    def images_are_different(img1, img2):
+        """Сравнение изображений для кэширования"""
+        if img1 is None or img2 is None:
+            return True
+        return img1.tobytes() != img2.tobytes()
+
     def run_server(self, interval_ms):
-        """Основная логика сервера."""
+        """Основная логика сервера с поддержкой выбора монитора"""
         try:
+            # Получение выбранного монитора
+            selected_idx = int(self.selected_monitor.get().split(":")[0].split()[-1]) - 1
+            monitor = self.monitors[selected_idx]
+            logging.info(f"Выбран монитор: {monitor['name']}")
+
             self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server_socket.bind((SERVER_HOST, SERVER_PORT))
             self.server_socket.listen(1)
@@ -181,16 +214,21 @@ class VRControlApp:
             self.current_conn, addr = self.server_socket.accept()
             logging.info(f"Подключен клиент: {addr}")
 
+            prev_screenshot = None
             buffer = b''
             while self.is_streaming:
                 start_time = time.time()
 
-                # Захват скриншота
+                # Захват скриншота выбранного монитора
                 try:
-                    screenshot = ImageGrab.grab()
+                    screenshot = ImageGrab.grab(bbox=monitor["bbox"])
                 except Exception as e:
                     logging.error(f"Ошибка захвата экрана: {e}")
                     continue
+
+                # Проверка на изменения
+                if self.images_are_different(screenshot, prev_screenshot):
+                    prev_screenshot = screenshot
 
                 # Конвертация в JPEG
                 try:
@@ -209,7 +247,7 @@ class VRControlApp:
                     logging.error("Соединение разорвано клиентом.")
                     break
 
-                # Прием кликов
+                # Прием и обработка кликов
                 try:
                     self.current_conn.settimeout(0.1)
                     data = self.current_conn.recv(1024)
@@ -217,11 +255,11 @@ class VRControlApp:
                         buffer += data
                         while b'\n' in buffer:
                             msg_part, buffer = buffer.split(b'\n', 1)
-                            self.handle_mouse_event(msg_part.decode().strip())
+                            self.handle_mouse_event(msg_part.decode().strip(), monitor)
                 except socket.timeout:
                     pass
 
-                # Точное интервал
+                # Точный интервал
                 elapsed = time.time() - start_time
                 sleep_time = max(0, interval_ms / 1000 - elapsed)
                 time.sleep(sleep_time)
@@ -243,24 +281,26 @@ class VRControlApp:
                 background="red"
             ))
 
-    @staticmethod
-    def handle_mouse_event(msg: str) -> None:
+    def handle_mouse_event(self, msg: str, monitor: dict) -> None:
+        """Обработка кликов с учетом выбранного монитора"""
         if msg.startswith("MOUSE:"):
             try:
                 parts = msg.split(":", 1)
-                if len(parts) != 2:
+                click_info = parts[1].split(",")
+
+                if len(click_info) != 3:
                     raise ValueError("Неверный формат сообщения")
 
-                click_info = parts[1].split(",")
-                if len(click_info) != 3:
-                    raise ValueError("Неверное количество параметров клика")
-
                 click_type, x_str, y_str = click_info
-                x = float(x_str)
-                y = float(y_str)
+                x_rel = float(x_str)
+                y_rel = float(y_str)
+
+                # Преобразование координат
+                x = monitor["bbox"][0] + self.safe_coordinate_conversion(x_rel, monitor["bbox"][2] - monitor["bbox"][0])
+                y = monitor["bbox"][1] + self.safe_coordinate_conversion(y_rel, monitor["bbox"][3] - monitor["bbox"][1])
 
                 pyautogui.moveTo(x, y)
-                mouse_button, action = click_type.split("_")
+                mouse_button = click_type.split("_")[0]
                 pyautogui.click(button=mouse_button)
 
                 logging.info(f"Клик {click_type} на ({x}, {y})")
